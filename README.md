@@ -229,5 +229,3 @@ Possible improvements include:
 * Scikit-learn
 * TensorFlow / Keras
 * Pillow
-If you found this project useful, feel free to ⭐ the repository.
-
