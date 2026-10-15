@@ -1,231 +1,112 @@
-# Skin Lesion Classification using CNN
+# Deep Learning-Based Skin Lesion Classification on HAM10000
 
-A deep learning project for classifying dermoscopic skin lesion images into seven diagnostic categories using a Convolutional Neural Network (CNN) and the HAM10000 dataset.
+A comparison of a custom Convolutional Neural Network (CNN) and an ImageNet-pretrained EfficientNetB0 for **seven-class classification of dermoscopic skin-lesion images**.
 
-## Overview
+The project focuses on lesion-level data splitting, class imbalance handling, quantitative model evaluation, and visual interpretation using Grad-CAM.
 
-Skin lesion classification is an important application of computer vision and deep learning in dermatology. In this project, a custom CNN model is developed to classify dermoscopic images into seven different skin lesion categories.
+**Research and educational demonstration only. Not intended for clinical diagnosis or use as a medical device.**
 
-The project includes:
+## 1. Dataset and Splitting
 
-* Exploratory Data Analysis (EDA)
-* Image preprocessing and normalization
-* Data augmentation
-* CNN model development
-* Model training and validation
-* Confusion matrix analysis
-* Model evaluation on the test set
+The [HAM10000 dataset](https://doi.org/10.1038/sdata.2018.161) contains **10,015 dermoscopic images** representing seven skin lesion categories: `akiec`, `bcc`, `bkl`, `df`, `mel`, `nv`, and `vasc`.
 
-> **Disclaimer:** This project is for educational and research purposes only. It is not intended for medical diagnosis or clinical decision-making.
+Since multiple images can correspond to the same lesion, the dataset was divided using `StratifiedGroupKFold`, with `lesion_id` as the grouping variable. This prevents images of the same lesion from appearing in different subsets and reduces the risk of data leakage.
 
-## Dataset
+| Split | Images | Unique Lesions |
+|---|---:|---:|
+| Training | 6,981 | 5,229 |
+| Validation | 1,020 | 746 |
+| Test | 2,014 | 1,495 |
 
-This project uses the **HAM10000 (Human Against Machine with 10000 training images)** dataset, which contains 10,015 dermoscopic images of common pigmented skin lesions.
+The splitting strategy is lesion-level rather than patient-level because patient identifiers are unavailable.
 
-The dataset includes seven diagnostic categories:
+## 2. Methodology
 
-| Code    | Diagnosis                     |
-| ------- | ----------------------------- |
-| `nv`    | Melanocytic nevi              |
-| `mel`   | Melanoma                      |
-| `bkl`   | Benign keratosis-like lesions |
-| `bcc`   | Basal cell carcinoma          |
-| `akiec` | Actinic keratoses             |
-| `vasc`  | Vascular lesions              |
-| `df`    | Dermatofibroma                |
+**CNN Baseline:** A custom convolutional neural network incorporating convolutional blocks, batch normalization, ReLU activations, global average pooling, and dense classification layers.
 
-The dataset contains both benign and malignant skin lesions.
+**EfficientNetB0:** An ImageNet-pretrained model adapted for skin lesion classification through transfer learning and partial fine-tuning.
 
-## Exploratory Data Analysis
+**Image Preprocessing:** Images were resized to 224 × 224 pixels, with flipping, rotation, and zoom augmentation applied during training.
 
-Several aspects of the dataset were analyzed, including:
+**Class Imbalance Handling:** Balanced class weights were calculated exclusively from the training data.
 
-* Patient gender distribution
-* Age distribution
-* Lesion type distribution
-* Diagnostic acquisition methods
-* Lesion localization
-* Lesion distribution across genders
-* Sample images from each class
+**Model Evaluation:** Performance was assessed using accuracy, macro-F1, balanced accuracy, ROC-AUC, confusion matrices, and per-class precision, recall, and F1-score.
 
-## Image Preprocessing
+**Statistical Analysis:** Lesion-level bootstrap resampling was used to estimate 95% confidence intervals.
 
-The images were resized to:
+**Model Interpretation:** Grad-CAM was applied to visualize image regions contributing to model predictions and explore selected classification errors.
 
-```text
-75 × 100 × 3
-```
+## 3. Experimental Results
 
-where:
+The models were evaluated on a test set containing **2,014 dermoscopic images**.
 
-* Height = 75 pixels
-* Width = 100 pixels
-* Channels = 3 (RGB)
+| Metric | CNN Baseline | EfficientNetB0 |
+|---|---:|---:|
+| Accuracy | 0.607 | **0.664** |
+| Macro-F1 | 0.422 | **0.480** |
+| Balanced Accuracy | 0.526 | **0.540** |
+| Melanoma Recall | 0.613 | 0.613 |
+| Macro ROC-AUC | 0.879 | **0.902** |
 
-Missing age values were replaced using the mean age of the dataset.
+EfficientNetB0 achieved higher accuracy, macro-F1, balanced accuracy, and macro ROC-AUC than the CNN baseline in this experiment.
 
-Image pixel values were standardized using the mean and standard deviation calculated from the training set.
+Both models achieved the same melanoma recall of 0.613, emphasizing the importance of evaluating individual lesion categories alongside overall performance.
 
-## Data Augmentation
+### EfficientNetB0: Per-Class Performance
 
-To improve model generalization, the following augmentation techniques were applied:
+| Class | Samples | Precision | Recall | F1 |
+|---|---:|---:|---:|---:|
+| akiec | 68 | 0.526 | 0.441 | 0.480 |
+| bcc | 100 | 0.523 | 0.450 | 0.484 |
+| bkl | 205 | 0.395 | 0.580 | 0.470 |
+| df | 22 | 0.133 | 0.182 | 0.154 |
+| mel | 222 | 0.303 | 0.613 | 0.405 |
+| nv | 1,363 | 0.951 | 0.717 | 0.818 |
+| vasc | 34 | 0.422 | 0.794 | 0.551 |
 
-* Random rotation
-* Random zoom
-* Width shifting
-* Height shifting
+### Statistical Confidence Intervals
 
-The augmentation pipeline was implemented using Keras `ImageDataGenerator`.
+The following 95% confidence intervals were estimated through 1,000 lesion-level bootstrap resamples.
 
-## CNN Architecture
+| Metric | CNN (95% CI) | EfficientNetB0 (95% CI) |
+|---|---|---|
+| Macro-F1 | 0.385–0.458 | 0.438–0.515 |
+| Balanced Accuracy | 0.484–0.574 | 0.494–0.586 |
+| Melanoma Recall | 0.524–0.692 | 0.537–0.693 |
 
-A custom Convolutional Neural Network was developed with the following architecture:
+## 4. Grad-CAM Visualization
 
-```text
-Input: 75 × 100 × 3
+Grad-CAM was used to generate heatmaps highlighting image regions associated with model predictions.
 
-Conv2D (32 filters, 3×3, ReLU)
-Conv2D (32 filters, 3×3, ReLU)
-MaxPooling2D
-Dropout (0.25)
+Visualizations were generated for selected validation images across all seven classes, including misclassified melanoma examples.
 
-Conv2D (64 filters, 3×3, ReLU)
-Conv2D (64 filters, 3×3, ReLU)
-MaxPooling2D
-Dropout (0.40)
+These visualizations provide qualitative insight into model behavior rather than clinically validated lesion localization.
 
-Flatten
-Dense (128, ReLU)
-Dropout (0.50)
-
-Dense (7, Softmax)
-```
-
-The model contains approximately **3.75 million trainable parameters**.
-
-## Training
-
-The model was trained using:
-
-| Parameter               | Value                    |
-| ----------------------- | ------------------------ |
-| Optimizer               | Adam                     |
-| Initial Learning Rate   | 0.001                    |
-| Loss Function           | Categorical Crossentropy |
-| Batch Size              | Project configuration    |
-| Maximum Epochs          | 50                       |
-| Learning Rate Scheduler | ReduceLROnPlateau        |
-| Number of Classes       | 7                        |
-
-The learning rate was automatically reduced when validation accuracy stopped improving.
-
-## Results
-
-The final model achieved the following results:
-
-| Metric              |   Accuracy |
-| ------------------- | ---------: |
-| Validation Accuracy | **78.18%** |
-| Test Accuracy       | **77.33%** |
-
-### Training Progress
-
-The model gradually improved during training. The validation accuracy reached approximately **78%**, while the final test accuracy was **77.33%**.
-
-### Confusion Matrix
-
-The confusion matrix was used to analyze the classification performance across the seven lesion categories and identify classes that were more frequently confused with each other.
-
-![Confusion Matrix](results/confusion_matrix_test.png)
-
-## Model Architecture
-
-![CNN Architecture](results/cnn_architecture.png)
-
-## Sample Images
-
-Examples of images from the seven skin lesion categories:
-
-![Sample Images](results/cell_type_samples_grid.png)
-
-## Project Structure
+## 5. Repository Structure
 
 ```text
 skin-lesion-classification-cnn/
 │
-├── notebooks/
-│   └── skin_lesion_classification.ipynb
+├── Codes/
+│   ├── 01_train_and_evaluate.ipynb
+│   └── 02_figures_and_analysis.ipynb
 │
-├── results/
-│   ├── cnn_architecture.png
-│   ├── cell_type_samples_grid.png
-│   ├── confusion_matrix_test.png
-│   └── training_history.png
+├── Results/
+│   └── figures/
 │
-├── models/
-│   └── model.keras
-│
-├── requirements.txt
-├── .gitignore
-├── README.md
-└── LICENSE
+└── README.md
 ```
 
-## Installation
+**01_train_and_evaluate.ipynb**
 
-Clone the repository:
+Contains data preprocessing, lesion-level splitting, CNN and EfficientNetB0 training, model evaluation, confidence interval estimation, and Grad-CAM.
 
-```bash
-git clone https://github.com/YOUR_USERNAME/skin-lesion-classification-cnn.git
-cd skin-lesion-classification-cnn
-```
+**02_figures_and_analysis.ipynb**
 
-Install the required dependencies:
+Contains exploratory data analysis, data distribution visualizations, training curves, model comparison plots, confusion matrices, and ROC/precision-recall analysis.
 
-```bash
-pip install -r requirements.txt
-```
+The `results/figures/` directory can be used to store generated plots and visualizations.
 
-## Usage
 
-Open the Jupyter Notebook:
 
-```bash
-jupyter notebook notebooks/skin_lesion_classification.ipynb
-```
 
-Before running the notebook, download the HAM10000 dataset and place the required files according to the dataset paths used in the notebook.
-
-## Limitations
-
-This project has several limitations:
-
-* The model is trained on a specific dermoscopic image dataset and may not generalize to other datasets or real-world clinical images.
-* The dataset contains class imbalance between lesion categories.
-* A custom CNN was used instead of pretrained architectures such as ResNet, EfficientNet, or DenseNet.
-* The model's performance should not be interpreted as clinical diagnostic accuracy.
-
-## Future Improvements
-
-Possible improvements include:
-
-* Using transfer learning with pretrained CNN architectures
-* Applying class weighting or other imbalance-handling techniques
-* Increasing image resolution
-* Using more advanced data augmentation
-* Performing stratified dataset splitting
-* Hyperparameter optimization
-* Evaluating precision, recall, F1-score, and ROC-AUC
-* Using explainable AI methods such as Grad-CAM
-
-## Technologies
-
-* Python
-* NumPy
-* Pandas
-* Matplotlib
-* Seaborn
-* Plotly
-* Scikit-learn
-* TensorFlow / Keras
-* Pillow
